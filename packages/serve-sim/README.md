@@ -54,6 +54,8 @@ serve-sim ca-debug <option> <on|off> [-d udid]
 serve-sim memory-warning [-d udid]    Simulate a memory warning
 serve-sim event-log [-d udid]         Show recent simulator events
 serve-sim ax [-d udid]                Dump the accessibility tree as JSON
+serve-sim state [-d udid]             Print device state as JSON
+                                      ({locked, frontmostApp})
 
 serve-sim camera <bundle-id> [-d udid] [source-options]
                                       Inject a synthetic camera feed and (re)launch the app
