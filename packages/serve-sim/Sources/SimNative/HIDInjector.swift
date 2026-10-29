@@ -36,6 +36,10 @@ actor HIDInjector {
     let queue = DispatchSerialQueue(label: "hid-injector", qos: .userInteractive)
     nonisolated var unownedExecutor: UnownedSerialExecutor { queue.asUnownedSerialExecutor() }
 
+    // Xcode 27 routes the main iOS display through its encoded screen target.
+    // The legacy digitizer target (0x32) sends successfully but is ignored.
+    private static let touchTarget: UInt32 = 0x4000_0001
+
     private var hidClient: NSObject?
     private var sendSel: Selector?
     private var simDevice: NSObject?
@@ -177,7 +181,7 @@ actor HIDInjector {
         default: return nil
         }
         var point = CGPoint(x: x, y: y)
-        return mouseFunc(&point, nil, 0x32, eventType, 1.0, 1.0, edge)
+        return mouseFunc(&point, nil, Self.touchTarget, eventType, 1.0, 1.0, edge)
     }
 
     /// Synchronously build + send a single touch. For use inside gesture blocks
@@ -205,7 +209,7 @@ actor HIDInjector {
         // Pass both CGPoints to create a 3-block multi-touch message.
         var point1 = CGPoint(x: x1, y: y1)
         var point2 = CGPoint(x: x2, y: y2)
-        guard let rawMsg = mouseFunc(&point1, &point2, 0x32, eventType, 1.0, 1.0, 0) else {
+        guard let rawMsg = mouseFunc(&point1, &point2, Self.touchTarget, eventType, 1.0, 1.0, 0) else {
             print("[hid] IndigoHIDMessageForMouseNSEvent returned nil for multi-touch \(type)")
             return
         }
@@ -231,8 +235,7 @@ actor HIDInjector {
     // idb target constant (third arg)
     private static let buttonTargetHardware: Int32 = 0x33
 
-    // Target for arbitrary (page, usage) HID — the digitizer, matching the touch
-    // path that's honored on Xcode 26 (0x32).
+    // Target for arbitrary (page, usage) HID hardware-button events.
     private static let buttonHIDTarget: UInt32 = 0x32
 
     /// Synchronously build + send a hardware-button message. Call only inside an
@@ -304,7 +307,7 @@ actor HIDInjector {
     // pointer service 0x35 is silently dropped). See docs/scroll-injection-devicehub.md.
     //
     // So we scroll the way a finger does: translate the wheel delta into a touch
-    // drag on the digitizer (target 0x32) — the same path taps/swipes use, which
+    // drag through the same path taps/swipes use, which
     // is verified to scroll on iOS 27. A wheel burst becomes one continuous drag
     // (begin → moves → end on idle), re-anchoring to center when it nears an edge
     // so long scrolls aren't capped by the screen bounds.
